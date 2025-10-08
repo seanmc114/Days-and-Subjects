@@ -1,11 +1,12 @@
-// TURBO: Days and School Subjects — MTW Sample (Spanish)
+// TURBO: MTW Sample (Ser/Tener/Estar) — voice-enabled, big score
 (()=>{
   const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
 
   // ----- CONFIG -----
   const CONFIG = {
-    title: "Days and School Subjects — MTW Sample",
-    codes: { D2: "OPEN-D2", D3: "OPEN-D3", FRIDAY: "OPEN-FRI" },
+    title: "Days and School Subjects",
+    // Sample codes — change these in production
+    codes: { D2: "MTW-D2-OPEN", D3: "MTW-D3-OPEN", FRIDAY: "MTW-FRI-OPEN" },
     days: {
       D1: { label: "Monday — Days & Relative Days" },
       D2: { label: "Tuesday — School Subjects A" },
@@ -43,12 +44,9 @@
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   const srSupported = !!SR;
-  async function ensureMicPermission(){
-    try{ if (navigator.mediaDevices?.getUserMedia){ const s = await navigator.mediaDevices.getUserMedia({audio:true}); (s.getTracks()||[]).forEach(t=>t.stop()); } }catch(e){}
-    return true;
-  }
 
-  // ----- PHRASES -----
+  
+  // ----- PHRASES for Days & School Subjects -----
   const PHRASES = {
     D1: [
       {en:"Monday", es:["lunes"]},
@@ -86,6 +84,29 @@
       {en:"Religion", es:["religión","religion"]}
     ]
   };
+// ----- DB -----
+  const DB = {
+    ser:{present:["soy","eres","es","es","somos","sois","son"],
+         past:["fui","fuiste","fue","fue","fuimos","fuisteis","fueron"],
+         future:["seré","serás","será","será","seremos","seréis","serán"]},
+    tener:{present:["tengo","tienes","tiene","tiene","tenemos","tenéis","tienen"],
+           past:["tuve","tuviste","tuvo","tuvo","tuvimos","tuvisteis","tuvieron"],
+           future:["tendré","tendrás","tendrá","tendrá","tendremos","tendréis","tendrán"]},
+    estar:{present:["estoy","estás","está","está","estamos","estáis","están"],
+           past:["estuve","estuviste","estuvo","estuvo","estuvimos","estuvisteis","estuvieron"],
+           future:["estaré","estarás","estará","estará","estaremos","estaréis","estarán"]}
+  };
+
+  // Persons with you clarification
+  const PERSONS = [
+    {label:"I", en:"I", tag:""},
+    {label:"you (sg.)", en:"you", tag:" (you: singular)"},
+    {label:"he", en:"he", tag:""},
+    {label:"she", en:"she", tag:""},
+    {label:"we", en:"we", tag:""},
+    {label:"you (pl.)", en:"you", tag:" (you: plural)"},
+    {label:"they", en:"they", tag:""}
+  ];
 
   const TENSES = ["Present","Past","Future"];
   let currentTense = "Present";
@@ -144,7 +165,7 @@
                   : (modeKey==="D1") ? false
                   : (modeKey==="FRIDAY") ? !isUnlocked("FRIDAY") && !(isUnlocked("D2") && isUnlocked("D3"))
                   : !isUnlocked(modeKey);
-    btn.disabled = locked;
+    btn.disabled = locked; 
     const icon = locked ? "🔒" : "🔓";
     const best = getBest(currentTense, modeKey);
     btn.textContent = `${icon} ${label}${best!=null ? " — Best: "+best.toFixed(1)+"s" : ""}`;
@@ -160,7 +181,7 @@
     $("#results").innerHTML = "";
     $("#back-button").style.display = "none";
 
-    const pool = buildPoolForMode(modeKey);
+    const pool = buildPoolForMode(modeKey, currentTense);
     shuffle(pool);
     const quiz = pool.slice(0, CONFIG.QUESTIONS_PER_RUN);
 
@@ -171,7 +192,7 @@
     if (VOICE.enabled) {
       vbar.style.display = "flex";
       $("#read-all").onclick = () => {
-        let i = 0; const items = quiz.map(q => q.prompt);
+        let i = 0; const items = quiz.map(q => q.prompt.replace(/\s*\(.*\)\s*$/,''));
         const next = () => { if (i >= items.length) return; VOICE.speak(items[i], 'en'); i++; setTimeout(next, 1700); };
         next();
       };
@@ -184,16 +205,13 @@
       const promptRow = document.createElement("div"); promptRow.className = "prompt-row";
       const p = document.createElement("div"); p.className = "prompt"; p.textContent = `${i+1}. ${q.prompt}`;
 
-      const spk = document.createElement("button"); spk.className = "icon-btn"; spk.textContent = "🔊"; spk.title = "Read this prompt";
-      spk.onclick = ()=> VOICE.speak(q.prompt, 'en');
+      const spk = document.createElement("button"); spk.className = "icon-btn"; spk.textContent = "🔊"; spk.title = "Read this question";
+      spk.onclick = ()=> VOICE.speak(q.prompt.replace(/\s*\(.*\)\s*$/,''), 'en');
 
       const mic = document.createElement("button"); mic.className = "icon-btn"; mic.textContent = "🎤"; mic.title = srSupported ? "Dictate answer (Spanish)" : "Speech recognition not supported";
-      const input = document.createElement("input"); input.type = "text"; input.placeholder = "Type or dictate the Spanish answer";
+      const input = document.createElement("input"); input.type = "text"; input.placeholder = "Type or dictate the Spanish form (e.g., soy)";
       if (srSupported) {
-        mic.onclick = async ()=>{
-          try { speechSynthesis.cancel(); } catch(e){}
-          await ensureMicPermission();
-          const rec = new SR(); rec.lang = "es-ES"; rec.interimResults = false; rec.maxAlternatives = 1;
+        mic.onclick = ()=>{ const rec = new SR(); rec.lang = "es-ES"; rec.interimResults = false; rec.maxAlternatives = 1;
           mic.disabled = true; mic.textContent = "⏺️…";
           rec.onresult = e => { const said = e.results[0][0].transcript || ""; input.value = said; };
           rec.onerror = ()=>{}; rec.onend = ()=>{ mic.disabled=false; mic.textContent="🎤"; };
@@ -204,33 +222,81 @@
       promptRow.appendChild(p); promptRow.appendChild(spk); promptRow.appendChild(mic);
       row.appendChild(promptRow); row.appendChild(input); qwrap.appendChild(row);
 
-      input.addEventListener('focus', ()=>{ const a = $("#auto-read"); if(a && a.checked) VOICE.speak(q.prompt, 'en'); });
+      input.addEventListener('focus', ()=>{ const a = $("#auto-read"); if(a && a.checked) VOICE.speak(q.prompt.replace(/\s*\(.*\)\s*$/,''), 'en'); });
     });
 
     $("#submit").onclick = () => checkAnswers(quiz);
-    $("#back-button").onclick = ()=>{ $("#game").style.display = "none"; $("#mode-list").style.display = "grid"; renderModes(); };
     startTimer();
   }
 
-  function buildPoolForMode(modeKey){
+  function buildPoolForMode(modeKey, tense){
     if (modeKey === "HOMEWORK") {
       const open = ["D1","D2","D3"].filter(d => isUnlocked(d) || d==="D1");
-      return poolFromDays(open);
+      return poolFromDays(open, tense);
     } else if (modeKey === "FRIDAY") {
-      return poolFromDays(["D1","D2","D3"]);
+      return poolFromDays(["D1","D2","D3"], tense);
     } else {
-      return poolFromDays([modeKey]);
+      return poolFromDays([modeKey], tense);
     }
   }
 
-  function poolFromDays(dayKeys){
+  
+  function poolFromDays(dayKeys, tense){
     const pool = [];
     dayKeys.forEach(d => {
       const list = PHRASES[d] || [];
-      list.forEach(item => pool.push({ prompt: `Type the Spanish: "${item.en}"`, answerList: item.es }));
+      list.forEach(item => pool.push({ prompt: `Type the Spanish: "${item.en}"`, answer: item.es[0], answerList: item.es }));
     });
     return pool;
   }
+
+
+  // ----- Prompts with grammar & you(sg/pl) -----
+  function englishPrompt(verb, tense, person, kind){
+    const subj = person.en, tag = person.tag || "";
+    if (verb === "tener") {
+      if (tense === "Present") {
+        if (kind==="pos") return `${cap(subj)}${tag} have (tener)`;
+        if (kind==="neg") return `${doNegHave(subj, tag)} (tener)`;
+        if (kind==="q")   return `${doQHave(subj, tag)} (tener)`;
+      } else if (tense === "Past") {
+        if (kind==="pos") return `${cap(subj)}${tag} had (tener)`;
+        if (kind==="neg") return `${cap(subj)}${tag} did not have (tener)`;
+        if (kind==="q")   return `Did ${subj}${tag} have? (tener)`;
+      } else {
+        if (kind==="pos") return `${cap(subj)}${tag} will have (tener)`;
+        if (kind==="neg") return `${cap(subj)}${tag} will not have (tener)`;
+        if (kind==="q")   return `Will ${subj}${tag} have? (tener)`;
+      }
+    } else if (verb === "estar" || verb === "ser") {
+      if (tense === "Present") {
+        if (kind==="pos") return `${cap(subj)}${tag} ${bePres(subj)} (${verb})`;
+        if (kind==="neg") return `${cap(subj)}${tag} ${bePresNeg(subj)} (${verb})`;
+        if (kind==="q")   return `${beQPres(person)} (${verb})`;
+      } else if (tense === "Past") {
+        if (kind==="pos") return `${cap(subj)}${tag} ${bePast(subj)} (${verb})`;
+        if (kind==="neg") return `${cap(subj)}${tag} ${bePastNeg(subj)} (${verb})`;
+        if (kind==="q")   return `${beQPast(person)} (${verb})`;
+      } else {
+        if (kind==="pos") return `${cap(subj)}${tag} will be (${verb})`;
+        if (kind==="neg") return `${cap(subj)}${tag} will not be (${verb})`;
+        if (kind==="q")   return `Will ${subj}${tag} be? (${verb})`;
+      }
+    } else {
+      // not used here
+      return `${cap(subj)}${tag} ${verb}`;
+    }
+  }
+  const is3 = s => (s==="he"||s==="she"||s==="it");
+  const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
+  const doQHave = (s,t) => `${is3(s) ? 'Does' : 'Do'} ${s}${t} have?`;
+  const doNegHave = (s,t) => `${cap(s)}${t} ${is3(s) ? 'does' : 'do'} not have`;
+  const bePres = s => s==="I" ? "am" : (s==="you"||s==="we"||s==="they") ? "are" : "is";
+  const bePresNeg = s => s==="I" ? "am not" : bePres(s) + " not";
+  const beQPres = p => { const s = p.en, t = p.tag||""; if(s==="I")return"Am I?"; if(s==="you")return`Are you${t}?`; if(s==="we")return"Are we?"; if(s==="they")return"Are they?"; return `Is ${s}?`; };
+  const bePast = s => (s==="I"||s==="he"||s==="she"||s==="it") ? "was" : "were";
+  const bePastNeg = s => bePast(s)+" not";
+  const beQPast = p => { const s=p.en, t=p.tag||""; if(s==="I")return"Was I?"; if(s==="you")return`Were you${t}?`; if(s==="he"||s==="she"||s==="it")return`Was ${s}?`; return `Were ${s}?`; };
 
   // ----- Timer & scoring -----
   function startTimer(){
@@ -249,13 +315,13 @@
     const inputs = $$("#questions .q input");
     let correct = 0; const items = [];
     inputs.forEach((inp,i)=>{
-      const ok = matchesAny(norm(inp.value), quiz[i].answerList);
+      const expected = quiz[i].answer;
+      const ok = (quiz[i].answerList ? quiz[i].answerList.map(norm).includes(norm(inp.value)) : (norm(inp.value) === norm(expected)));
       inp.classList.remove("good","bad"); inp.classList.add(ok ? "good" : "bad");
       if (ok) correct++;
       const li = document.createElement("li");
       li.className = ok ? "correct" : "incorrect";
-      const show = Array.isArray(quiz[i].answerList) ? quiz[i].answerList[0] : quiz[i].answerList;
-      li.textContent = `${i+1}. ${quiz[i].prompt} → ${show}`;
+      li.textContent = `${i+1}. ${quiz[i].prompt} → ${quiz[i].answer}`;
       items.push(li);
     });
     const elapsed = (performance.now() - startTime)/1000;
@@ -278,12 +344,13 @@
     if (VOICE.enabled) VOICE.speak(`You got ${correct} out of ${quiz.length}. Final time ${finalTime.toFixed(1)} seconds.`, 'en');
 
     $("#back-button").style.display = "inline-block";
+    $("#back-button").onclick = ()=>{ $("#game").style.display = "none"; $("#mode-list").style.display = "flex"; renderModes(); };
   }
 
   function norm(s){
     return (s||"").toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-      .replace(/[¿?¡!"]/g,"").replace(/\s+/g," ").trim();
+      .replace(/[¿?¡!]/g,"").replace(/\s+/g," ").trim();
   }
 
   // ----- Best per (tense, mode) -----
@@ -309,11 +376,6 @@
     host.appendChild(makeModeBtn("D2", CONFIG.days.D2.label));
     host.appendChild(makeModeBtn("D3", CONFIG.days.D3.label));
     host.appendChild(makeModeBtn("FRIDAY", "Friday Test (All week) — unlocks from Wednesday"));
-  }
-
-  function matchesAny(user, answers){
-    const list = Array.isArray(answers) ? answers : [answers];
-    return list.some(ans => norm(ans) === user);
   }
 
   function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }

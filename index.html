@@ -2,47 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Days and School Subjects — MTW Sample</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TURBO: MTW Sample (Ser/Tener/Estar)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
-    <header class="topbar">
-      <h1><span class="turbo">TURBO</span>: Days and School Subjects — MTW Sample</h1>
-      <div id="timer" aria-live="polite" class="timer">Time: 0s</div>
-    </header>
+  <div class="container">
+    <h1><span class="turbo">TURBO</span>: MTW Sample (Ser/Tener/Estar)</h1>
 
-    <div id="msg" class="msg" aria-live="polite"></div>
+    <div id="tense-buttons" role="toolbar" aria-label="Tense selection">
+      <button class="tense-button active" data-tense="Present">Present</button>
+      <button class="tense-button" data-tense="Past">Past</button>
+      <button class="tense-button" data-tense="Future">Future</button>
+    </div>
 
-    <section id="menu" class="card">
-      <div id="unlock-bar" class="unlock">
-        <input id="codeInput" class="code" type="text" placeholder="Enter teacher code…" />
-        <button id="codeBtn" class="btn">Unlock</button>
-        <span id="codeMsg" class="code-msg"></span>
+    <div id="unlock-bar">
+      <input id="codeInput" placeholder="Enter teacher code" />
+      <button id="codeBtn">Unlock</button>
+      <span id="codeMsg" aria-live="polite"></span>
+    </div>
+
+    <div id="mode-list" class="modes"></div>
+
+    <div id="game" style="display:none;">
+      <div id="timer" aria-live="polite">Time: 0s</div>
+
+      <div id="voice-bar" class="voice-bar" style="display:none;">
+        <button id="read-all">🔊 Read all</button>
+        <label class="auto-read">
+          <input type="checkbox" id="auto-read" />
+          Auto‑read on focus
+        </label>
       </div>
 
-      <div class="tense-bar">
-        <button class="tense-button active" data-tense="Present">Present</button>
-        <button class="tense-button" data-tense="Past">Past</button>
-        <button class="tense-button" data-tense="Future">Future</button>
-      </div>
-
-      <div id="mode-list" class="modes"></div>
-    </section>
-
-    <section id="game" class="card" style="display:none">
-      <div id="voice-bar" class="voice-bar" style="display:none">
-        <label class="chk"><input type="checkbox" id="auto-read"> Auto-read on focus</label>
-        <button id="read-all" class="btn small">🔊 Read all prompts</button>
-      </div>
       <div id="questions"></div>
-      <div class="btn-row end">
-        <button id="submit" class="btn primary">Submit</button>
-        <button id="back-button" class="btn" style="display:none">Back to Menu</button>
+      <div class="controls">
+        <button id="submit">Finish & Check</button>
+        <button id="back-button" style="display:none;">Back to Menu</button>
       </div>
-      <div id="results" class="results"></div>
-    </section>
+      <div id="results" aria-live="polite"></div>
+    </div>
   </div>
   <script src="script.js"></script>
 </body>
